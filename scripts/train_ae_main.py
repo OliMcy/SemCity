@@ -9,9 +9,9 @@ def get_args():
     parser.add_argument("--mlp_hidden_channels", type=int, default=256, help="mlp hidden dimension")
     parser.add_argument("--mlp_hidden_layers", type=int, default=4, help="mlp hidden layers")
     parser.add_argument("--padding_mode", default='replicate')
-    parser.add_argument("--bs", type=int, default=4, help="batch size for autoencoding training")
+    parser.add_argument("--bs", type=int, default=8, help="batch size for autoencoding training")
     parser.add_argument("--dataset", default='kitti', choices=['kitti', 'carla'])
-    parser.add_argument("--z_down", default=False)
+    parser.add_argument("--z_down", default=True)
 
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--lr_scheduler", default=True)

@@ -83,28 +83,31 @@ class SemKITTI(data.Dataset):
             voxel_label = np.zeros([256, 256, 32], dtype=int).reshape((-1, 1))
         else:
             voxel_label = np.fromfile(path, dtype=np.uint16).reshape((-1, 1))  # voxel labels
+            voxel_unlabeled = self.unpack(np.fromfile(path.replace('label', 'bin'), dtype=np.uint8)).astype(np.float32).reshape((-1, 1))  # voxel unlabeled
             invalid = self.unpack(np.fromfile(path.replace('label', 'invalid').replace(self.folder, 'voxels'), dtype=np.uint8)).astype(np.float32)
             
         voxel_label = self.learning_map[voxel_label]
         voxel_label = voxel_label.reshape((256, 256, 32))
+        voxel_unlabeled = voxel_unlabeled.reshape((256, 256, 32))
         invalid = invalid.reshape((256,256,32))
         voxel_label[invalid == 1]=255
+        voxel_unlabeled[invalid == 1]=255
 
         if self.get_query :
             if self.imageset == 'train' :
                 p = torch.randint(0, 6, (1,)).item()
                 if p == 0:
-                    voxel_label, invalid = flip(voxel_label, invalid, flip_dim=0)
+                    voxel_label, voxel_unlabeled, invalid = flip(voxel_label, voxel_unlabeled, invalid, flip_dim=0)
                 elif p == 1:
-                    voxel_label, invalid = flip(voxel_label, invalid, flip_dim=1)
+                    voxel_label, voxel_unlabeled, invalid = flip(voxel_label, voxel_unlabeled, invalid, flip_dim=1)
                 elif p == 2:
-                    voxel_label, invalid = flip(voxel_label, invalid, flip_dim=0)
-                    voxel_label, invalid = flip(voxel_label, invalid, flip_dim=1)
+                    voxel_label, voxel_unlabeled, invalid = flip(voxel_label, voxel_unlabeled, invalid, flip_dim=0)
+                    voxel_label, voxel_unlabeled, invalid = flip(voxel_label, voxel_unlabeled, invalid, flip_dim=1)
             query, xyz_label, xyz_center = get_query(voxel_label)
 
         else : 
             query, xyz_label, xyz_center = torch.zeros(1), torch.zeros(1), torch.zeros(1)
-        return voxel_label, query, xyz_label, xyz_center, self.im_idx[index], invalid
+        return voxel_label, voxel_unlabeled, query, xyz_label, xyz_center, self.im_idx[index], invalid
     
 def get_query(voxel_label, num_class=20, grid_size = (256,256,32), max_points = 400000):
     xyzl = []
@@ -157,7 +160,8 @@ def compute_tdf(voxel_label: np.ndarray, trunc_distance: float = 3, trunc_value:
     tdf[tdf > trunc_distance] = trunc_value
     return tdf  # [X, Y, Z]
 
-def flip(voxel, invalid, flip_dim=0):
+def flip(voxel, voxel_unlabeled, invalid, flip_dim=0):
     voxel = np.flip(voxel, axis=flip_dim).copy()
+    voxel_unlabeled = np.flip(voxel_unlabeled, axis=flip_dim).copy()
     invalid = np.flip(invalid, axis=flip_dim).copy()
-    return voxel, invalid
+    return voxel, voxel_unlabeled, invalid

@@ -1,0 +1,66 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "SemCity: AutoEncoder",
+            "type": "python",
+            "request": "launch",
+            "program": "/usr/stud/mche/storage/user/project/SemCity/scripts/train_ae_main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--save_path",
+                "exp/ae",
+                "--dataset",
+                "kitti",
+            ]
+        },
+        {
+            "name": "SemCity: TriPlane",
+            "type": "python",
+            "request": "launch",
+            "program": "/usr/stud/mche/storage/user/project/SemCity/scripts/save_triplane.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--dataset",
+                "kitti",
+                "--data_name",
+                "voxels",
+                "--save_tail",
+                ".np",
+                "--resume",
+                "exp/ae/2_miou=78.468.pt"
+            ]
+        },
+        {
+            "name": "SemCity: Refine",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--refine_dataset",
+                "scpnet",
+                "--save_path",
+                "exp/ssc_refine",
+            ]
+        },
+        {
+            "name": "SemCity: Diff",
+            "type": "python",
+            "request": "launch",
+            "program": "/usr/stud/mche/storage/user/project/SemCity/scripts/train_diffusion_main.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--triplane_loss_type",  "l2",
+                "--save_path", "exp/diff",
+            ]
+        }
+    ]
+}

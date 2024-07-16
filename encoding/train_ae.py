@@ -21,8 +21,8 @@ class Trainer:
 
         # dataset
         self.train_dataset, self.val_dataset, self.num_class, class_names = dataset_builder(args)
-        self.train_dataloader = torch.utils.data.DataLoader(self.train_dataset, batch_size=args.bs, shuffle=True, num_workers=8, pin_memory=True)
-        self.val_dataloader = torch.utils.data.DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+        self.train_dataloader = torch.utils.data.DataLoader(self.train_dataset, batch_size=args.bs, shuffle=True, num_workers=5, pin_memory=True)
+        self.val_dataloader = torch.utils.data.DataLoader(self.val_dataset, batch_size=1, shuffle=False, num_workers=5, pin_memory=True)
         self.iou_class_names = class_names
 
         # model & optimizer
@@ -58,9 +58,9 @@ class Trainer:
             self.scheduler.step()
             self.writer.add_scalar('lr_epochwise', self.optimizer.param_groups[0]['lr'], global_step=self.epoch)
 
-    def _loss(self, vox, query, label, losses, coord):
+    def _loss(self, vox, vox_unlabeled, query, label, losses, coord):
         empty_label = 0.
-        preds = self.model(vox, query) # [bs, N, 20]
+        preds = self.model(vox_unlabeled, query) # [bs, N, 20]
         losses['ce'] = self.loss_fns['ce'](preds.view(-1, self.num_class), label.view(-1,))
         losses['loss'] = losses['ce']
         
@@ -84,8 +84,9 @@ class Trainer:
         evaluator = SSCMetrics(self.num_class, [])
         dataloader_tqdm = tqdm(self.train_dataloader)
 
-        for vox, query, label, coord, path, invalid in dataloader_tqdm:
+        for vox, vox_unlabeled, query, label, coord, path, invalid in dataloader_tqdm:
             vox = vox.type(torch.LongTensor).cuda()
+            vox_unlabeled = vox_unlabeled.type(torch.LongTensor).cuda()
             query = query.type(torch.FloatTensor).cuda()
             label = label.type(torch.LongTensor).cuda()
             coord = coord.type(torch.LongTensor).cuda()
@@ -95,7 +96,7 @@ class Trainer:
             # forward
             losses = {}
             with autocast():
-                losses, model_output, adaptive_weight = self._loss(vox, query, label, losses, coord)
+                losses, model_output, adaptive_weight = self._loss(vox, vox_unlabeled, query, label, losses, coord)
 
             # optimize
             self.optimizer.zero_grad()
@@ -159,8 +160,9 @@ class Trainer:
         evaluator = SSCMetrics(self.num_class, [])
         dataloader_tqdm = tqdm(self.val_dataloader)
 
-        for sample_idx, (vox, query, label, coord, path, invalid) in enumerate(dataloader_tqdm):
+        for sample_idx, (vox, vox_unlabeled, query, label, coord, path, invalid) in enumerate(dataloader_tqdm):
             vox = vox.type(torch.LongTensor).cuda()
+            vox_unlabeled = vox_unlabeled.type(torch.LongTensor).cuda()
             query = query.type(torch.FloatTensor).cuda()
             label = label.type(torch.LongTensor).cuda()
             coord = coord.type(torch.LongTensor).cuda()
@@ -169,7 +171,7 @@ class Trainer:
             assert b_size == 1, 'For accurate logging, please set batch size of validation dataloader to 1.'
 
             losses = {}
-            losses, model_output, adaptive_weight = self._loss(vox, query, label, losses, coord)
+            losses, model_output, adaptive_weight = self._loss(vox, vox_unlabeled, query, label, losses, coord)
             pred_mask =  get_pred_mask(model_output)
 
             masks = torch.from_numpy(evaluator.get_eval_mask(vox.cpu().numpy(), invalid.cpu().numpy()))
